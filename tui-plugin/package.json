@@ -1,0 +1,21 @@
+{
+  "name": "opencode-session-bridge-tui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OpenCode TUI plugin: pick a project and primary session with Ctrl+P, then copy its session ID",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "install-plugin": "sh ./install.sh"
+  },
+  "devDependencies": {
+    "@opencode/plugin": "2.0.32",
+    "@opentui/core": "^0.6.6",
+    "@opentui/solid": "^0.6.6",
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "solid-js": "^1.9.17",
+    "typescript": "^5.0.2"
+  }
+}

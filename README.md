@@ -83,6 +83,29 @@ Set it in the server's `environment`, for example:
 - When OpenCode passes the calling session ID in MCP `_meta`, that session is excluded from discovery and cannot be the target of `send_message`.
 - Discovery looks at the 200 most recent sessions.
 
+## TUI plugin (Ctrl+P → Bridge)
+
+`tui-plugin/` is an OpenCode TUI plugin for picking a session by hand. Press **Ctrl+P** and choose **Bridge**:
+
+1. Pick a project. Only projects with sessions are listed.
+2. Pick a primary session. Subagent sessions are hidden.
+3. The session ID is copied to the clipboard, and a toast confirms it. Paste it into your prompt.
+
+The plugin can't type into the prompt box, because the plugin API has no way to write to the composer. If no clipboard tool is found, the toast shows the ID so you can copy it.
+
+Clipboard tools: `pbcopy` on macOS, `wl-copy` or `xclip` on Linux, `clip` on Windows.
+
+Install it into OpenCode's plugin directory, then restart OpenCode:
+
+```sh
+cd tui-plugin
+npm install
+npm run install-plugin
+opencode plugin list     # should show session-bridge
+```
+
+Run the tests with `npm test`, and the typecheck with `npm run typecheck`.
+
 ## Layout
 
 ```
@@ -90,6 +113,7 @@ main.go                       MCP server wiring over stdio
 internal/opencode/            OpenCode discovery and HTTP client
 internal/bridge/              MCP tools and session ranking (with tests)
 skills/opencode-session-bridge/SKILL.md
+tui-plugin/                   Ctrl+P "Bridge" TUI plugin (with tests)
 ```
 
 ## Limits
