@@ -8,6 +8,7 @@ It talks to the local OpenCode service over its HTTP API, so it needs OpenCode t
 
 ## Tools
 
+- `create_session`: start a new session in a project directory, optionally with a first prompt
 - `list_sessions`: discover sessions, filtered by project, title, or running state
 - `find_session`: the most recently active session for a project (running sessions first)
 - `send_message`: send a message, optionally waiting for and returning the reply
@@ -56,6 +57,24 @@ To use the skill, copy `skills/opencode-session-bridge` into `~/.agents/skills/`
 3. `OPENCODE_SERVER_USERNAME`, defaulting to `opencode`.
 
 Discovery runs on every tool call, so the bridge keeps working after OpenCode restarts on a different port.
+
+## Creating sessions
+
+`create_session` resolves its `project` argument in this order:
+
+1. An absolute path that exists is used as is.
+2. A name that matches the last directory of a recent session (case-insensitive).
+3. A name that exists as a child of one of the directories in `SESSION_BRIDGE_PROJECT_ROOTS`. The variable is a colon-separated list, like `PATH`.
+
+Set it in the server's `environment`, for example:
+
+```jsonc
+"session-bridge": {
+  "type": "local",
+  "command": ["/absolute/path/to/opencode-session-bridge/bin/opencode-session-bridge"],
+  "environment": { "SESSION_BRIDGE_PROJECT_ROOTS": "/home/dev/src" }
+}
+```
 
 ## Session targeting
 

@@ -71,6 +71,17 @@ func NewClient(cfg Config) *Client {
 	}
 }
 
+func (r rawSession) toSession() Session {
+	return Session{
+		ID:        r.ID,
+		Title:     r.Title,
+		Directory: r.Location.Directory,
+		Outcome:   r.Outcome,
+		Created:   time.UnixMilli(r.Time.Created),
+		Updated:   time.UnixMilli(r.Time.Updated),
+	}
+}
+
 func (c *Client) ListSessions(ctx context.Context, limit int) ([]Session, error) {
 	query := url.Values{}
 	query.Set("limit", strconv.Itoa(limit))
@@ -85,16 +96,27 @@ func (c *Client) ListSessions(ctx context.Context, limit int) ([]Session, error)
 
 	sessions := make([]Session, 0, len(page.Data))
 	for _, r := range page.Data {
-		sessions = append(sessions, Session{
-			ID:        r.ID,
-			Title:     r.Title,
-			Directory: r.Location.Directory,
-			Outcome:   r.Outcome,
-			Created:   time.UnixMilli(r.Time.Created),
-			Updated:   time.UnixMilli(r.Time.Updated),
-		})
+		sessions = append(sessions, r.toSession())
 	}
 	return sessions, nil
+}
+
+func (c *Client) CreateSession(ctx context.Context, directory, title, agent string) (Session, error) {
+	body := map[string]any{"location": map[string]string{"directory": directory}}
+	if title != "" {
+		body["title"] = title
+	}
+	if agent != "" {
+		body["agent"] = agent
+	}
+
+	var resp struct {
+		Data rawSession `json:"data"`
+	}
+	if err := c.do(ctx, http.MethodPost, "/api/session", body, &resp); err != nil {
+		return Session{}, err
+	}
+	return resp.Data.toSession(), nil
 }
 
 func (c *Client) ActiveSessionIDs(ctx context.Context) (map[string]bool, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -42,6 +43,20 @@ type ListSessionsOutput struct {
 type FindSessionInput struct {
 	Project string `json:"project" jsonschema:"Project name or path fragment such as my-app. The most recently active matching session is returned."`
 	Title   string `json:"title,omitempty" jsonschema:"Optional case-insensitive text the session title must contain."`
+}
+
+type CreateSessionInput struct {
+	Project string `json:"project" jsonschema:"Project name such as my-app, or an absolute directory path. Names are matched against known session directories and SESSION_BRIDGE_PROJECT_ROOTS."`
+	Title   string `json:"title,omitempty" jsonschema:"Title for the new session. Defaults to the directory name."`
+	Prompt  string `json:"prompt,omitempty" jsonschema:"Optional first message to queue in the new session right after it is created."`
+	Agent   string `json:"agent,omitempty" jsonschema:"Agent to run the session with. Leave empty for the default agent."`
+}
+
+type CreateSessionOutput struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Directory string `json:"directory"`
+	InboxID   string `json:"inbox_id,omitempty"`
 }
 
 type SendMessageInput struct {
@@ -85,7 +100,19 @@ type MessageView struct {
 	Created string `json:"created"`
 }
 
-func Register(server *mcp.Server, provider Provider) {
+// Options configures the tools that need local settings.
+type Options struct {
+	// ProjectRoots are directories whose children can be referenced by name
+	// when creating sessions, such as /home/me/src for "my-app".
+	ProjectRoots []string
+}
+
+func Register(server *mcp.Server, provider Provider, opts Options) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "create_session",
+		Description: "Create a new OpenCode session in a project directory, optionally with a first prompt. For a feature that spans several repositories, create one session per directory and coordinate them with send_message.",
+	}, createSession(provider, opts.ProjectRoots))
+
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_sessions",
 		Description: "List OpenCode sessions, most recently active first. Filter by project or title, or only running sessions. Use this to discover session IDs before sending a message.",
@@ -105,6 +132,47 @@ func Register(server *mcp.Server, provider Provider) {
 		Name:        "read_session",
 		Description: "Read the most recent user and assistant messages of an OpenCode session, oldest first, and whether it is still running.",
 	}, readSession(provider))
+}
+
+func createSession(provider Provider, roots []string) mcp.ToolHandlerFor[CreateSessionInput, CreateSessionOutput] {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in CreateSessionInput) (*mcp.CallToolResult, CreateSessionOutput, error) {
+		if strings.TrimSpace(in.Project) == "" {
+			return nil, CreateSessionOutput{}, errors.New("project is required")
+		}
+		client, err := provider(ctx)
+		if err != nil {
+			return nil, CreateSessionOutput{}, err
+		}
+		known, err := client.ListSessions(ctx, discoveryLimit)
+		if err != nil {
+			return nil, CreateSessionOutput{}, err
+		}
+
+		directory, err := resolveDirectory(in.Project, known, roots)
+		if err != nil {
+			return nil, CreateSessionOutput{}, err
+		}
+		title := in.Title
+		if title == "" {
+			title = filepath.Base(directory)
+		}
+
+		session, err := client.CreateSession(ctx, directory, title, in.Agent)
+		if err != nil {
+			return nil, CreateSessionOutput{}, err
+		}
+		out := CreateSessionOutput{ID: session.ID, Title: session.Title, Directory: session.Directory}
+		if in.Prompt == "" {
+			return nil, out, nil
+		}
+
+		inboxID, err := client.SendPrompt(ctx, session.ID, in.Prompt, "")
+		if err != nil {
+			return nil, out, fmt.Errorf("session %s was created but the first prompt failed: %w", session.ID, err)
+		}
+		out.InboxID = inboxID
+		return nil, out, nil
+	}
 }
 
 func listSessions(provider Provider) mcp.ToolHandlerFor[ListSessionsInput, ListSessionsOutput] {

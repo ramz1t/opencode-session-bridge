@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"opencode-session-bridge/internal/bridge"
@@ -20,7 +21,9 @@ func main() {
 		Version: version,
 	}, nil)
 
-	bridge.Register(server, connect)
+	bridge.Register(server, connect, bridge.Options{
+		ProjectRoots: filepath.SplitList(os.Getenv("SESSION_BRIDGE_PROJECT_ROOTS")),
+	})
 
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
