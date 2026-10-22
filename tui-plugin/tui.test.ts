@@ -107,6 +107,7 @@ describe("plugin", () => {
     expect(layers).toHaveLength(1)
     const [command] = layers[0].commands ?? []
     expect(command.title).toBe("Bridge")
+    expect(command.description).toBeUndefined()
     expect(command.palette).toBe(true)
   })
 })

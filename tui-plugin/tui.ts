@@ -67,8 +67,6 @@ export default Plugin.define({
         {
           id: "session-bridge.open",
           title: "Bridge",
-          description: "Pick a project and a session, then copy its ID",
-          group: "Bridge",
           palette: true,
           bind: false,
           run: async () => {
